@@ -3,7 +3,10 @@ from ultralytics import YOLO
 import serial
 import time
 
+print("CUDA available:", torch.cuda.is_available())
+
 model = YOLO("yolov8s.pt")  # Pretrained on COCO
+model.to("cuda")
 serial = serial.Serial(port = "/dev/ttyTHS1", baudrate=9600)   
 def compute_control_signals(bboxes, img_w, img_h):
     if not bboxes:
@@ -35,7 +38,7 @@ while True:
         break
     
     # YOLOv8 inference
-    results = model.predict(frame, conf=0.25)
+    results = model.predict(frame, conf=0.25, device='cuda')
     r = results[0]
 
     # Filter out bboxes for a desired class, e.g. "chair"
