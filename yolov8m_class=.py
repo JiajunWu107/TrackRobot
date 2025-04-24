@@ -97,7 +97,7 @@ while True:
     # Send v and w to Jetson Nano
     command = f"!{v:.2f}@{w:.2f}#"
     print(command)
-    sock.sendto(commandencode(), (jetson_ip, 8888))
+    sock.sendto(command.encode(), (jetson_ip, 8888))
     
 
     # Draw detections
