@@ -58,7 +58,7 @@ namespace HERO_UART_Smooth_Control
                     // UART control mode
                     if (_uart == null)
                     {
-                        _uart = new SerialPort(CTRE.HERO.IO.Port1.UART, 9600);
+                        _uart = new SerialPort(CTRE.HERO.IO.Port1.UART, 115200);
                         _uart.Open();
                         uartBuffer.Clear();
                     }
