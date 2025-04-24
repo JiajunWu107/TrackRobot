@@ -8,6 +8,11 @@ import sys
 import cv2
 from ultralytics import YOLO
 
+# Connect to Jetson Nano ip through wifi
+
+jetson_ip = '10.5.144.120'
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 # -------------------------------------------------
 # 1) Parse command–line argument  ------------------
 # -------------------------------------------------
@@ -88,6 +93,12 @@ while True:
     img_h, img_w = frame.shape[:2]
     v, w = compute_control_signals(bboxes, img_w, img_h)
     print(f"v = {v:.2f}  |  w = {w:.2f}", end="\r")
+
+    # Send v and w to Jetson Nano
+    command = f"!{v:.2f}@{w:.2f}#"
+    print(command)
+    sock.sendto(commandencode(), (jetson_ip, 8888))
+    
 
     # Draw detections
     for (x1, y1, x2, y2, conf, label) in bboxes:
