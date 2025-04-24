@@ -6,6 +6,7 @@ Run:  python yolov8m_class=.py               # default class = chair
 
 import sys
 import cv2
+import socket
 from ultralytics import YOLO
 
 # Connect to Jetson Nano ip through wifi
