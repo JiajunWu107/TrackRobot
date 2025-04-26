@@ -52,20 +52,20 @@ def compute_control_signals(bboxes, img_w, img_h):
     bx_center_x = (x1 + x2) / 2
     offset_x    = bx_center_x - (img_w / 2)
 
-    # Angular velocity  w  ∈ [-0.4, 0.4]
-    max_w = 0.4
+    # Angular velocity  w  ∈ [-0.3, 0.3]
+    max_w = 0.3
     w = (offset_x / (img_w / 2)) * max_w
     w = max(-max_w, min(w, max_w))
 
-    # Linear velocity  v  ∈ [0, 0.8] (slow when object is close/large)
-    max_v = 0.8
+    # Linear velocity  v  ∈ [0, 0.3] (slow when object is close/large)
+    max_v = 0.3
     box_area     = (x2 - x1) * (y2 - y1)
     area_thresh_maxspeed  = (img_w * img_h) / 10  # heuristic
     area_thresh_midspeed = (img_w * img_h) / 3
     if box_area < area_thresh_maxspeed:
-        v = 0.6
-    elif box_area < area_thresh_midspeed:
         v = 0.3
+    elif box_area < area_thresh_midspeed:
+        v = 0.1
     else:
         v = 0
     v = max(0.0, min(v, max_v))
