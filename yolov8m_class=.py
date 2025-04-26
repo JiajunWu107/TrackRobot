@@ -53,7 +53,7 @@ def compute_control_signals(bboxes, img_w, img_h):
     offset_x    = bx_center_x - (img_w / 2)
 
     # Angular velocity  w  ∈ [-0.3, 0.3]
-    max_w = 0.3
+    max_w = 0.16
     w = (offset_x / (img_w / 2)) * max_w
     w = max(-max_w, min(w, max_w))
 
