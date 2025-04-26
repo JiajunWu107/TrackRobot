@@ -60,8 +60,14 @@ def compute_control_signals(bboxes, img_w, img_h):
     # Linear velocity  v  ∈ [0, 0.8] (slow when object is close/large)
     max_v = 0.8
     box_area     = (x2 - x1) * (y2 - y1)
-    area_thresh  = (img_w * img_h) / 10  # heuristic
-    v = 0.8 if box_area < area_thresh else 0.3
+    area_thresh_maxspeed  = (img_w * img_h) / 10  # heuristic
+    area_thresh_midspeed = (img_w * img_h) / 3
+    if box_area < area_thresh_maxspeed:
+        v = 0.6
+    elif box_area < area_thresh_midspeed:
+        v = 0.3
+    else:
+        v = 0
     v = max(0.0, min(v, max_v))
 
     return v, w
