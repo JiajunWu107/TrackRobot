@@ -9,8 +9,10 @@ import cv2
 import socket
 from ultralytics import YOLO
 
-# Connect to Jetson Nano ip through wifi
+# check cuda availability
+print("CUDA available:", torch.cuda.is_available())
 
+# Connect to Jetson Nano ip through wifi
 jetson_ip = '10.5.144.120'
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -29,6 +31,7 @@ for arg in sys.argv[1:]:
 # 2) Load model & verify the requested class  -----
 # -------------------------------------------------
 model = YOLO("yolov8m.pt")                 # COCO-pretrained (80 classes)
+model.to("cuda")                          # move model to cuda
 coco_names = {name.lower() for name in model.names.values()}  # {'person', 'car', ...}
 
 if target_class not in coco_names:
@@ -83,7 +86,7 @@ while True:
         break
 
     # Inference
-    results = model.predict(frame, conf=0.25, verbose=False)[0]
+    results = model.predict(frame, conf=0.25, verbose=False, device='cuda')[0]
 
     # Keep detections matching the requested class
     bboxes = []
