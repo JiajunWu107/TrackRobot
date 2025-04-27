@@ -26,8 +26,8 @@ namespace HERO_UART_Smooth_Control
         static float smoothedV = 0.0f;
         static float smoothedW = 0.0f;
 
-        static float alpha = 0.3f;
-        static float maxChangePerLoop = 0.05f;
+        static float alpha = 0.6f;              // faster smoothing (was 0.3)
+        static float maxChangePerLoop = 0.15f;   // faster max velocity delta (was 0.05)
 
         public static void Main()
         {
@@ -42,7 +42,7 @@ namespace HERO_UART_Smooth_Control
                 if (_gamepad == null)
                     _gamepad = new GameController(UsbHostDevice.GetInstance());
 
-                // Toggle Button 6
+                // Toggle mode on Button 6 press
                 bool currentButton6State = _gamepad.GetButton(6);
                 if (currentButton6State && !lastButton6State)
                 {
@@ -72,13 +72,14 @@ namespace HERO_UART_Smooth_Control
 
                 if (!useUART)
                 {
-                    float v = -1 * _gamepad.GetAxis(1);
-                    float w = _gamepad.GetAxis(2);
-                    Drive(v, w);  // Manual control
+                    // Manual joystick control
+                    float v = -1 * _gamepad.GetAxis(1);  // joystick Y-axis needs flip
+                    float w = _gamepad.GetAxis(2);       // joystick X-axis normal
+                    Drive(v, w, false);                  // drive in joystick mode
                 }
                 else
                 {
-                    // UART mode
+                    // UART control mode
                     if (_uart != null && _uart.BytesToRead > 0)
                     {
                         bytesReceived = _uart.Read(data, 0, data.Length);
@@ -123,12 +124,12 @@ namespace HERO_UART_Smooth_Control
                         }
                     }
 
-                    // ✅ Smooth every loop even when UART is silent
+                    // Always apply smoothing
                     smoothedV = alpha * targetV + (1 - alpha) * smoothedV;
                     smoothedW = alpha * targetW + (1 - alpha) * smoothedW;
 
-                    // ✅ Always drive using smoothed values
-                    Drive(smoothedV, smoothedW);
+                    // ✅ Flip v here for UART
+                    Drive(smoothedV, smoothedW, true);
                 }
 
                 CTRE.Phoenix.Watchdog.Feed();
@@ -136,8 +137,11 @@ namespace HERO_UART_Smooth_Control
             }
         }
 
-        static void Drive(float v, float w)
+        static void Drive(float v, float w, bool isUART)
         {
+            if (isUART)
+                v = -v;  // Flip v direction only for UART control
+
             float leftThrot = v + w;
             float rightThrot = v - w;
 
@@ -146,7 +150,7 @@ namespace HERO_UART_Smooth_Control
 
             left.Set(ControlMode.PercentOutput, leftThrot);
             leftSlave.Set(ControlMode.PercentOutput, leftThrot);
-            right.Set(ControlMode.PercentOutput, -rightThrot);
+            right.Set(ControlMode.PercentOutput, -rightThrot);   // Invert right motors
             rightSlave.Set(ControlMode.PercentOutput, -rightThrot);
         }
 
