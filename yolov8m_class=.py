@@ -6,6 +6,7 @@ Run:  python yolov8m_class=.py               # default class = chair
 
 import sys
 import cv2
+import torch
 import socket
 from ultralytics import YOLO
 
