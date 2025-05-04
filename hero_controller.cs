@@ -26,8 +26,8 @@ namespace HERO_UART_Smooth_Control
         static float smoothedV = 0.0f;
         static float smoothedW = 0.0f;
 
-        static float alpha = 0.6f;              // faster smoothing (was 0.3)
-        static float maxChangePerLoop = 0.15f;   // faster max velocity delta (was 0.05)
+        static float alpha = 0.6f;              // smoothing factor
+        static float maxChangePerLoop = 0.15f;  // velocity ramp limit
 
         public static void Main()
         {
@@ -42,12 +42,12 @@ namespace HERO_UART_Smooth_Control
                 if (_gamepad == null)
                     _gamepad = new GameController(UsbHostDevice.GetInstance());
 
-                // Toggle mode on Button 6 press
+                // Toggle control mode on Button 6 press
                 bool currentButton6State = _gamepad.GetButton(6);
                 if (currentButton6State && !lastButton6State)
                 {
                     useUART = !useUART;
-                    Debug.Print("Toggled mode: " + (useUART ? "UART" : "Joystick"));
+                    Debug.Print("Mode toggled: " + (useUART ? "UART" : "Joystick"));
 
                     if (useUART)
                     {
@@ -72,14 +72,12 @@ namespace HERO_UART_Smooth_Control
 
                 if (!useUART)
                 {
-                    // Manual joystick control
-                    float v = -1 * _gamepad.GetAxis(1);  // joystick Y-axis needs flip
-                    float w = _gamepad.GetAxis(2);       // joystick X-axis normal
-                    Drive(v, w, false);                  // drive in joystick mode
+                    float v = -1 * _gamepad.GetAxis(1);
+                    float w = _gamepad.GetAxis(2);
+                    Drive(v, w, false);
                 }
                 else
                 {
-                    // UART control mode
                     if (_uart != null && _uart.BytesToRead > 0)
                     {
                         bytesReceived = _uart.Read(data, 0, data.Length);
@@ -93,16 +91,18 @@ namespace HERO_UART_Smooth_Control
                                 string msg = uartBuffer.ToString();
                                 uartBuffer.Clear();
 
-                                int startIdx = msg.LastIndexOf('!');
-                                int midIdx = msg.IndexOf('@', startIdx);
-                                int endIdx = msg.IndexOf('#', midIdx);
-
-                                if (startIdx != -1 && midIdx != -1 && endIdx != -1)
+                                try
                                 {
-                                    try
+                                    int startIdx = msg.IndexOf('!');
+                                    int midIdx = msg.IndexOf('@');
+                                    int endIdx = msg.IndexOf('#');
+
+                                    if (startIdx != -1 && midIdx != -1 && endIdx != -1 &&
+                                        startIdx < midIdx && midIdx < endIdx &&
+                                        endIdx > midIdx + 1 && midIdx > startIdx + 1)
                                     {
-                                        string vStr = msg.Substring(startIdx + 1, midIdx - startIdx - 1);
-                                        string wStr = msg.Substring(midIdx + 1, endIdx - midIdx - 1);
+                                        string vStr = msg.Substring(startIdx + 1, midIdx - (startIdx + 1));
+                                        string wStr = msg.Substring(midIdx + 1, endIdx - (midIdx + 1));
 
                                         float v = (float)Convert.ToDouble(vStr);
                                         float w = (float)Convert.ToDouble(wStr);
@@ -110,12 +110,16 @@ namespace HERO_UART_Smooth_Control
                                         targetV = LimitChange(targetV, v, maxChangePerLoop);
                                         targetW = LimitChange(targetW, w, maxChangePerLoop);
 
-                                        Debug.Print("Received v=" + v + ", w=" + w);
+                                        Debug.Print("Parsed v=" + v + ", w=" + w);
                                     }
-                                    catch
+                                    else
                                     {
-                                        Debug.Print("UART parse error");
+                                        Debug.Print("⚠️ Malformed UART message: " + msg);
                                     }
+                                }
+                                catch
+                                {
+                                    Debug.Print("⚠️ UART parse exception: " + uartBuffer.ToString());
                                 }
                             }
 
@@ -124,23 +128,21 @@ namespace HERO_UART_Smooth_Control
                         }
                     }
 
-                    // Always apply smoothing
                     smoothedV = alpha * targetV + (1 - alpha) * smoothedV;
                     smoothedW = alpha * targetW + (1 - alpha) * smoothedW;
 
-                    // ✅ Flip v here for UART
                     Drive(smoothedV, smoothedW, true);
                 }
 
                 CTRE.Phoenix.Watchdog.Feed();
-                Thread.Sleep(20);  // ~50Hz loop
+                Thread.Sleep(20);  // 50Hz update rate
             }
         }
 
         static void Drive(float v, float w, bool isUART)
         {
             if (isUART)
-                v = -v;  // Flip v direction only for UART control
+                v = -v;  // Only invert v for UART (not for joystick)
 
             float leftThrot = v + w;
             float rightThrot = v - w;
@@ -150,7 +152,7 @@ namespace HERO_UART_Smooth_Control
 
             left.Set(ControlMode.PercentOutput, leftThrot);
             leftSlave.Set(ControlMode.PercentOutput, leftThrot);
-            right.Set(ControlMode.PercentOutput, -rightThrot);   // Invert right motors
+            right.Set(ControlMode.PercentOutput, -rightThrot);
             rightSlave.Set(ControlMode.PercentOutput, -rightThrot);
         }
 
