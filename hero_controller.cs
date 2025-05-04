@@ -172,6 +172,3 @@ namespace HERO_UART_Smooth_Control
         }
     }
 }
-
-
-
