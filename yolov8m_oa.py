@@ -116,7 +116,7 @@ class Navigator:
                 self.timer = BACKUP_FRAMES
                 # Turn opposite to obstacle side later
                 ox1, _, ox2, _, _, _ = danger
-                self.turn_dir = -1 if (ox1 + ox2) / 2 < img_w / 2 else 1
+                self.turn_dir = 1 if (ox1 + ox2) / 2 < img_w / 2 else -1
             else:
                 # pursue target normally
                 v, w = self._seek_control(target_boxes, img_w, img_h, img_area)
