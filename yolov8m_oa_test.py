@@ -124,7 +124,7 @@ class Navigator:
                 # target bookkeeping
                 if target_boxes:
                     centre_x = (target_boxes[0][0] + target_boxes[0][2]) / 2
-                    self.last_target_side = -1 if centre_x < img_w / 2 else 1
+                    self.last_target_side = 1 if centre_x < img_w / 2 else -1
                     self.lost_frames = 0
                 else:
                     self.lost_frames += 1
@@ -140,7 +140,7 @@ class Navigator:
         elif self.mode == Mode.AVOID:
             v = 0.10  # creep forward gently
             w = self.turn_dir * MAX_W_AVOID
-            self.last_target_side = 1 if centre_x < img_w / 2 else -1
+            self.last_target_side = 1 if entre_x < img_w / 2 else -1
             # If timer expires or obstacle not near any more ⇒ SEEK
             self.timer -= 1
             if self.timer <= 0:
