@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dual Joystick Robot Control</title>
+  <script>
+    const server_ip = window.location.origin;
+    let vValue = 0.0, wValue = 0.0;
+
+    // add turbo here as a speed level
+    const speedLevels = { low: 0.3, medium: 0.6, high: 0.8, turbo: 1.0 };
+    let currentSpeed = speedLevels.medium;
+
+    function sendCommand(v, w) {
+      fetch(`${server_ip}/send/${v}/${w}`)
+        .catch(err => console.error('Error sending command:', err));
+      document.getElementById('vwDisplay').innerText =
+        `v: ${v.toFixed(2)} | w: ${w.toFixed(2)}`;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // wire up Low/Med/High buttons
+      ['low','medium','high'].forEach(level => {
+        document.getElementById(`speed-${level}`)
+          .addEventListener('click', () => {
+            currentSpeed = speedLevels[level];
+            // highlight only that button
+            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`speed-${level}`).classList.add('active');
+            // turn off turbo highlight
+            document.getElementById('turbo-btn').classList.remove('on');
+          });
+      });
+
+      // turbo as a click-toggle
+      const turboBtn = document.getElementById('turbo-btn');
+      turboBtn.addEventListener('click', () => {
+        currentSpeed = speedLevels.turbo;
+        // clear Low/Med/High highlights
+        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+        // highlight turbo
+        turboBtn.classList.add('on');
+      });
+
+      setupJoystick('vJoystick', 'vStick', 'vertical');
+      setupJoystick('wJoystick', 'wStick', 'horizontal');
+
+      setInterval(() => {
+        let v = vValue, w = wValue;
+        if (v < 0) w = -w;
+        sendCommand(v, w);
+      }, 50);
+    });
+
+    function setupJoystick(joystickId, stickId, axis) {
+      const joystick = document.getElementById(joystickId);
+      const stick    = document.getElementById(stickId);
+      const innerW = joystick.clientWidth, innerH = joystick.clientHeight;
+      const centerX = innerW/2, centerY = innerH/2;
+      const stickR = stick.offsetWidth/2;
+
+      // center stick on load
+      stick.style.left = (centerX - stickR) + "px";
+      stick.style.top  = (centerY - stickR) + "px";
+
+      function updateStick(x, y) {
+        let dx = x - centerX, dy = y - centerY;
+        const maxX = (innerW/2) - stickR;
+        const maxY = (innerH/2) - stickR;
+
+        if (axis === 'vertical') {
+          dy = Math.max(-maxY, Math.min(maxY, dy));
+          dx = 0;
+        } else {
+          dx = Math.max(-maxX, Math.min(maxX, dx));
+          dy = 0;
+        }
+
+        stick.style.left = (centerX + dx - stickR) + "px";
+        stick.style.top  = (centerY + dy - stickR) + "px";
+
+        if (axis === 'vertical') {
+          vValue = -(dy / maxY) * currentSpeed;
+          if (Math.abs(vValue) < 0.02) vValue = 0;
+        } else {
+          wValue = (dx / maxX) * 0.4;
+          if (Math.abs(wValue) < 0.02) wValue = 0;
+        }
+      }
+
+      function resetStick() {
+        stick.style.left = (centerX - stickR) + "px";
+        stick.style.top  = (centerY - stickR) + "px";
+        if (axis === 'vertical') vValue = 0;
+        else wValue = 0;
+      }
+
+      // mouse events
+      joystick.addEventListener('mousedown', e => {
+        updateStick(e.offsetX, e.offsetY);
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      });
+      function move(e) { updateStick(e.offsetX, e.offsetY); }
+      function up(e)   { resetStick(); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+
+      // touch events
+      let touchId = null;
+      joystick.addEventListener('touchstart', e => {
+        for (let t of e.changedTouches) {
+          const rect = joystick.getBoundingClientRect();
+          const x = t.clientX - rect.left, y = t.clientY - rect.top;
+          if (x>=0 && x<=innerW && y>=0 && y<=innerH) {
+            touchId = t.identifier;
+            updateStick(x, y);
+          }
+        }
+      }, { passive: false });
+      joystick.addEventListener('touchmove', e => {
+        for (let t of e.changedTouches) {
+          if (t.identifier === touchId) {
+            const rect = joystick.getBoundingClientRect();
+            updateStick(t.clientX - rect.left, t.clientY - rect.top);
+            e.preventDefault();
+          }
+        }
+      }, { passive: false });
+      joystick.addEventListener('touchend', e => {
+        for (let t of e.changedTouches) {
+          if (t.identifier === touchId) {
+            resetStick();
+            touchId = null;
+          }
+        }
+      });
+    }
+  </script>
+
+  <style>
+    html, body {
+      background: #d3d3d3;
+      margin: 0; padding: 0;
+      font-family: Arial, sans-serif;
+      overflow: hidden; height: 100%; width: 100%;
+    }
+
+    /* Speed controls at top center */
+    .speed-controls {
+      position: fixed;
+      top: 10px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 8px;
+    }
+    .speed-btn {
+      padding: 6px 12px;
+      border: 2px solid #333;
+      background: #fff; cursor: pointer;
+    }
+    .speed-btn.active {
+      background: #333; color: #fff;
+    }
+
+    /* Turbo button at top right */
+    #turbo-btn {
+      position: fixed;
+      top: 10px; right: 10px;
+      padding: 6px 12px;
+      background: #e74c3c; color: #fff;
+      border: 2px solid #333;
+      cursor: pointer;
+    }
+    /* .on = active turbo highlight */
+    #turbo-btn.on {
+      box-shadow: 0 0 8px rgba(231,76,60,0.7);
+    }
+
+    .controller {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      height: 90vh;
+      padding-top: 100px;
+      box-sizing: border-box;
+    }
+
+    .joystick-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 5px;
+    }
+
+    .joystick.vertical {
+      width: 90px; height: 240px;
+      background: #007BFF; border-radius: 45px;
+      border: 5px solid #000; position: relative;
+      touch-action: none;
+    }
+
+    .joystick.horizontal {
+      width: 240px; height: 90px;
+      background: #007BFF; border-radius: 45px;
+      border: 5px solid #000; position: relative;
+      touch-action: none; margin-top: 45px;
+    }
+
+    .stick {
+      width: 60px; height: 60px;
+      background: #003f7f; border-radius: 50%;
+      position: absolute;
+    }
+
+    .legend {
+      text-align: center; font-size: 18px; margin-bottom: 10px;
+    }
+
+    /* v/w display under speed controls */
+    .display {
+      position: fixed;
+      top: 50px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px; font-weight: bold;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="speed-controls">
+    <button id="speed-low"    class="speed-btn">Low</button>
+    <button id="speed-medium" class="speed-btn active">Medium</button>
+    <button id="speed-high"   class="speed-btn">High</button>
+  </div>
+  <button id="turbo-btn">Turbo</button>
+
+  <div id="vwDisplay" class="display">v: 0.00 | w: 0.00</div>
+
+  <div class="controller">
+    <div class="joystick-wrapper">
+      <div class="legend">Forward / Backward (v)</div>
+      <div id="vJoystick" class="joystick vertical">
+        <div id="vStick" class="stick"></div>
+      </div>
+    </div>
+    <div class="joystick-wrapper">
+      <div class="legend">Left / Right (w)</div>
+      <div id="wJoystick" class="joystick horizontal">
+        <div id="wStick" class="stick"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
