@@ -148,7 +148,7 @@ class Navigator:
             if self.timer <= 0:
                 self.mode = Mode.SEEK
         elif self.mode == Mode.FIND:
-            v = 0.0
+            v = 0.10
             dir_ = self.last_target_side  # default rotate right: 1
             w = dir_ * 0.08
             if target_boxes:
