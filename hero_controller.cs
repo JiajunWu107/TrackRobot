@@ -112,15 +112,6 @@ namespace HERO_UART_Smooth_Control
 
                                         Debug.Print("Parsed v=" + v + ", w=" + w);
                                     }
-                                    else
-                                    {
-                                        Debug.Print("⚠️ Malformed UART message: " + msg);
-                                    }
-                                }
-                                catch
-                                {
-                                    Debug.Print("⚠️ UART parse exception: " + uartBuffer.ToString());
-                                }
                             }
 
                             if (uartBuffer.Length > 100)
